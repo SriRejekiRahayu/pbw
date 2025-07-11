@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sri Rejeki Rahayu - Login & Data</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div class="profile-container">
+    <div class="header-bg"></div>
+
+    <div class="profile-photo-wrapper">
+      <img src="k.jpeg" alt="profile" class="profile-photo" />
+    </div>
+
+    <div class="header-text">
+      <h1>Sri Rejeki Rahayu</h1>
+      <p class="subtitle">She/Her • Network Engineer</p>
+      <p>Jakarta, Indonesia</p>
+      <p><strong>Universitas IPWIJA</strong></p>
+    </div>
+
+    <div class="action-buttons">
+      <button id="logoutBtn" style="display: none;">Logout</button>
+    </div>
+
+    <!-- FORM LOGIN -->
+    <div class="login-box" id="loginBox">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <label>Username (Email):
+          <input type="text" id="username" required>
+        </label>
+        <label>Password:
+          <input type="password" id="password" required>
+        </label>
+        <button type="submit">Login</button>
+      </form>
+    </div>
+
+    <!-- DATA -->
+    <div id="content" style="width: 90%; margin-top: 20px;"></div>
+
+    <div class="content-card">
+      <h3>Sosial Media</h3>
+      <ul>
+        <li><strong>github :</strong> https://github.com/SriRejekiRahayu</li>
+      </ul>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+    const SUPABASE_URL = 'https://gminamhcbgefokwjowax.supabase.co'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtaW5hbWhjYmdlZm9rd2pvd2F4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1MzEyMTksImV4cCI6MjA2NTEwNzIxOX0.m9aCvGQ6-cgU3DPPQ_5QReEZbtQ-QZoEMlEa74AwtOI'
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    const content = document.getElementById('content')
+    const loginBox = document.getElementById('loginBox')
+    const logoutBtn = document.getElementById('logoutBtn')
+
+    async function loadData() {
+      const { data: authData, error: userError } = await supabase.auth.getUser()
+
+      if (userError || !authData.user) {
+        console.log('❌ Gagal mendapatkan user:', userError)
+        content.innerHTML = '<p>Silakan login untuk melihat data.</p>'
+        return
+      }
+
+      const user = authData.user
+      console.log('✅ User berhasil login:', user)
+      console.log('🔍 ID user:', user.id)
+
+      // Ambil data dari tabel web3, hanya yang cocok dengan user.id
+      const { data, error } = await supabase
+        .from('web3')
+        .select('*')
+        .eq('user', user.id)  // 🟢 tambahkan baris ini agar hanya ambil data milik user login
+        .order('id')
+
+
+      console.log('📦 Data hasil query:', data)
+      console.log('⚠️ Error query (jika ada):', error)
+
+      if (error) {
+        content.innerHTML = '<p>Terjadi error: ' + error.message + '</p>'
+        return
+      }
+
+      if (!data || data.length === 0) {
+        content.innerHTML = '<p>❗ Tidak ada data untuk akun ini.</p>'
+        return
+      }
+
+      let out = ''
+      data.forEach(row => {
+        out += `
+      <div class="content-card">
+        <h2>${row.judul}</h2>
+        <p>${row.isi}</p>
+      </div>
+    `
+      })
+
+      content.innerHTML = out
+    }
+
+
+
+    document.getElementById('loginForm').addEventListener('submit', async function (e) {
+      e.preventDefault()
+      const email = document.getElementById('username').value.trim()
+      const password = document.getElementById('password').value.trim()
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+
+      if (error) {
+        alert('Login gagal: ' + error.message)
+        return
+      }
+
+      loginBox.style.display = 'none'
+      logoutBtn.style.display = 'block'
+      loadData()
+    })
+
+    logoutBtn.addEventListener('click', async () => {
+      await supabase.auth.signOut()
+      content.innerHTML = ''
+      loginBox.style.display = 'block'
+      logoutBtn.style.display = 'none'
+    })
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        loginBox.style.display = 'none'
+        logoutBtn.style.display = 'block'
+        loadData()
+      }
+    })
+  </script>
+</body>
+
+</html>
